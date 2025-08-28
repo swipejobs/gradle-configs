@@ -1,0 +1,91 @@
+// Gradle Dependency Check Analyzer Configuration
+// Remote configuration for OWASP Dependency Check plugin
+// 
+// Usage in your build.gradle:
+// apply from: 'https://raw.githubusercontent.com/swipejobs/gradle-configs/main/remote-analyzer-config.gradle'
+
+// Check if the OWASP Dependency Check plugin is applied
+if (!project.plugins.hasPlugin('org.owasp.dependencycheck')) {
+    logger.warn("OWASP Dependency Check plugin not found. Skipping analyzer configuration.")
+    return
+}
+
+// Configuration helper function
+def getProperty = { String key, def defaultValue ->
+    return project.findProperty(key) ?: defaultValue
+}
+
+dependencyCheck {
+    // Report format configuration
+    format = getProperty('dependencyCheck.format', 'ALL')
+    autoUpdate = getProperty('dependencyCheck.autoUpdate', false).toString().toBoolean()
+    
+    // Database configuration - can be overridden via properties
+    if (project.hasProperty('dependencyCheck.database.connectionString')) {
+        data {
+            connectionString = getProperty('dependencyCheck.database.connectionString', '')
+            username = getProperty('dependencyCheck.database.username', '')
+            password = getProperty('dependencyCheck.database.password', '')
+            driver = getProperty('dependencyCheck.database.driver', 'com.mysql.cj.jdbc.Driver')
+        }
+    }
+    
+    // Analyzer configuration with SwipeJobs defaults
+    analyzers {
+        // Assembly analyzer - disabled for performance
+        assemblyEnabled = getProperty('analyzer.assembly.enabled', false).toString().toBoolean()
+        
+        // Central analyzer - disabled for performance
+        centralEnabled = getProperty('analyzer.central.enabled', false).toString().toBoolean()
+        
+        // OSS Index analyzer - enabled with warn only on remote errors
+        ossIndex {
+            enabled = getProperty('analyzer.ossIndex.enabled', true).toString().toBoolean()
+            warnOnlyOnRemoteErrors = getProperty('analyzer.ossIndex.warnOnlyOnRemoteErrors', true).toString().toBoolean()
+        }
+        
+        // Additional analyzers with sensible defaults
+        nodeAuditEnabled = getProperty('analyzer.nodeAudit.enabled', true).toString().toBoolean()
+        nodePackageEnabled = getProperty('analyzer.nodePackage.enabled', true).toString().toBoolean()
+        retirejs {
+            enabled = getProperty('analyzer.retirejs.enabled', true).toString().toBoolean()
+        }
+        
+        // Archive analyzers
+        jarEnabled = getProperty('analyzer.jar.enabled', true).toString().toBoolean()
+        archiveEnabled = getProperty('analyzer.archive.enabled', true).toString().toBoolean()
+        
+        // Experimental analyzers - disabled by default
+        experimentalEnabled = getProperty('analyzer.experimental.enabled', false).toString().toBoolean()
+    }
+    
+    // Suppression files configuration
+    if (project.hasProperty('dependencyCheck.suppressionFiles')) {
+        suppressionFiles = getProperty('dependencyCheck.suppressionFiles', [])
+    } else {
+        // Default SwipeJobs suppression file
+        def goServerUrl = System.getenv('GO_SERVER_URL') ? 
+            System.getenv('GO_SERVER_URL').toList().init().init().init().join() : 
+            'https://gocd-internal.swipejobs.com'
+        suppressionFiles = ["${goServerUrl}/dependencycheck/java-suppression.xml"]
+    }
+    
+    // Fail build configuration
+    if (project.hasProperty('dependencyCheck.failBuildOnCVSS')) {
+        failBuildOnCVSS = Float.parseFloat(getProperty('dependencyCheck.failBuildOnCVSS', '0'))
+    }
+    
+    // Skip test groups for performance
+    skipTestGroups = getProperty('dependencyCheck.skipTestGroups', true).toString().toBoolean()
+}
+
+// Log applied configuration for debugging
+logger.info("Applied SwipeJobs dependency check configuration:")
+logger.info("  - Format: ${dependencyCheck.format}")
+logger.info("  - Assembly enabled: ${dependencyCheck.analyzers.assemblyEnabled}")
+logger.info("  - Central enabled: ${dependencyCheck.analyzers.centralEnabled}")
+logger.info("  - OSS Index enabled: ${dependencyCheck.analyzers.ossIndex.enabled}")
+logger.info("  - Auto update: ${dependencyCheck.autoUpdate}")
+if (dependencyCheck.suppressionFiles) {
+    logger.info("  - Suppression files: ${dependencyCheck.suppressionFiles}")
+}
