@@ -44,19 +44,26 @@ dependencyCheck {
             warnOnlyOnRemoteErrors = getProperty('analyzer.ossIndex.warnOnlyOnRemoteErrors', true).toString().toBoolean()
         }
         
-        // Additional analyzers with sensible defaults
-        nodeAuditEnabled = getProperty('analyzer.nodeAudit.enabled', true).toString().toBoolean()
-        nodePackageEnabled = getProperty('analyzer.nodePackage.enabled', true).toString().toBoolean()
-        retirejs {
-            enabled = getProperty('analyzer.retirejs.enabled', true).toString().toBoolean()
+        // Additional analyzers - only set if properties are provided to avoid unknown property errors
+        if (project.hasProperty('analyzer.retirejs.enabled')) {
+            retirejs {
+                enabled = getProperty('analyzer.retirejs.enabled', true).toString().toBoolean()
+            }
         }
         
-        // Archive analyzers
-        jarEnabled = getProperty('analyzer.jar.enabled', true).toString().toBoolean()
-        archiveEnabled = getProperty('analyzer.archive.enabled', true).toString().toBoolean()
-        
-        // Experimental analyzers - disabled by default
-        experimentalEnabled = getProperty('analyzer.experimental.enabled', false).toString().toBoolean()
+        // Set other analyzers only if explicitly configured
+        if (project.hasProperty('analyzer.jar.enabled')) {
+            jarEnabled = getProperty('analyzer.jar.enabled', true).toString().toBoolean()
+        }
+        if (project.hasProperty('analyzer.archive.enabled')) {
+            archiveEnabled = getProperty('analyzer.archive.enabled', true).toString().toBoolean()
+        }
+        if (project.hasProperty('analyzer.experimental.enabled')) {
+            experimentalEnabled = getProperty('analyzer.experimental.enabled', false).toString().toBoolean()
+        }
+        if (project.hasProperty('analyzer.nodeAudit.enabled')) {
+            nodeAuditEnabled = getProperty('analyzer.nodeAudit.enabled', true).toString().toBoolean()
+        }
     }
     
     // Suppression files configuration
