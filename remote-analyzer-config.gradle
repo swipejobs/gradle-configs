@@ -16,74 +16,38 @@ def getProperty = { String key, def defaultValue ->
 }
 
 dependencyCheck {
-    // Report format configuration
-    format = getProperty('dependencyCheck.format', 'ALL')
-    autoUpdate = getProperty('dependencyCheck.autoUpdate', false).toString().toBoolean()
-    
-    // Database configuration - can be overridden via properties
-    if (project.hasProperty('dependencyCheck.database.connectionString')) {
+    dependencyCheck {
+        format = project.findProperty('dependencyCheck.format') ?: 'ALL'
+        autoUpdate = project.findProperty('dependencyCheck.autoUpdate')?.toBoolean() ?: false
+
         data {
-            connectionString = getProperty('dependencyCheck.database.connectionString', '')
-            username = getProperty('dependencyCheck.database.username', '')
-            password = getProperty('dependencyCheck.database.password', '')
-            driver = getProperty('dependencyCheck.database.driver', 'com.mysql.cj.jdbc.Driver')
+            connectionString = System.getenv('DEPENDENCY_CHECK_DB_URL') ?: 
+                               project.findProperty('dependencyCheck.database.connectionString') ?: 
+                               "jdbc:h2:file:./build/dependency-check-data/odc"
+            username = System.getenv('DEPENDENCY_CHECK_DB_USER') ?: 
+                       project.findProperty('dependencyCheck.database.username') ?: ""
+            password = System.getenv('DEPENDENCY_CHECK_DB_PASSWORD') ?: 
+                       project.findProperty('dependencyCheck.database.password') ?: ""
+            driver = System.getenv('DEPENDENCY_CHECK_DB_DRIVER') ?: 
+                     project.findProperty('dependencyCheck.database.driver') ?: 
+                     "org.h2.Driver"
         }
-    }
-    
-    // Analyzer configuration with SwipeJobs defaults
-    analyzers {
-        // Assembly analyzer - disabled for performance
-        assemblyEnabled = getProperty('analyzer.assembly.enabled', false).toString().toBoolean()
-        
-        // Central analyzer - disabled for performance
-        centralEnabled = getProperty('analyzer.central.enabled', false).toString().toBoolean()
-        
-        // OSS Index analyzer - enabled with warn only on remote errors
-        ossIndex {
-            enabled = getProperty('analyzer.ossIndex.enabled', true).toString().toBoolean()
-            warnOnlyOnRemoteErrors = getProperty('analyzer.ossIndex.warnOnlyOnRemoteErrors', true).toString().toBoolean()
-        }
-        
-        // Additional analyzers - only set if properties are provided to avoid unknown property errors
-        if (project.hasProperty('analyzer.retirejs.enabled')) {
-            retirejs {
-                enabled = getProperty('analyzer.retirejs.enabled', true).toString().toBoolean()
+
+        analyzers {
+            assemblyEnabled = project.findProperty('analyzer.assembly.enabled')?.toBoolean() ?: false
+            centralEnabled = project.findProperty('analyzer.central.enabled')?.toBoolean() ?: false
+            ossIndex {
+                enabled = project.findProperty('analyzer.ossIndex.enabled')?.toBoolean() ?: true
+                warnOnlyOnRemoteErrors = project.findProperty('analyzer.ossIndex.warnOnlyOnRemoteErrors')?.toBoolean() ?: true
             }
-        }
-        
-        // Set other analyzers only if explicitly configured
-        if (project.hasProperty('analyzer.jar.enabled')) {
-            jarEnabled = getProperty('analyzer.jar.enabled', true).toString().toBoolean()
-        }
-        if (project.hasProperty('analyzer.archive.enabled')) {
-            archiveEnabled = getProperty('analyzer.archive.enabled', true).toString().toBoolean()
-        }
-        if (project.hasProperty('analyzer.experimental.enabled')) {
-            experimentalEnabled = getProperty('analyzer.experimental.enabled', false).toString().toBoolean()
-        }
-        if (project.hasProperty('analyzer.nodeAudit.enabled')) {
-            nodeAuditEnabled = getProperty('analyzer.nodeAudit.enabled', true).toString().toBoolean()
+            // retirejs { enabled = false }
+            // nodeAudit { enabled = false }
         }
     }
-    
-    // Suppression files configuration
-    if (project.hasProperty('dependencyCheck.suppressionFiles')) {
-        suppressionFiles = getProperty('dependencyCheck.suppressionFiles', [])
-    } else {
-        // Default SwipeJobs suppression file
-        def goServerUrl = System.getenv('GO_SERVER_URL') ? 
-            System.getenv('GO_SERVER_URL').toList().init().init().init().join() : 
-            'https://gocd-internal.swipejobs.com'
-        suppressionFiles = ["${goServerUrl}/dependencycheck/java-suppression.xml"]
-    }
-    
-    // Fail build configuration
-    if (project.hasProperty('dependencyCheck.failBuildOnCVSS')) {
-        failBuildOnCVSS = Float.parseFloat(getProperty('dependencyCheck.failBuildOnCVSS', '0'))
-    }
-    
-    // Skip test groups for performance
-    skipTestGroups = getProperty('dependencyCheck.skipTestGroups', true).toString().toBoolean()
+
+    // apply exclusions
+    def exclusions = System.getenv('GO_SERVER_URL') ? System.getenv('GO_SERVER_URL').toList().init().init().init().join() : 'https://gocd-internal.swipejobs.com'
+    suppressionFiles = ["${exclusions}/dependencycheck/java-suppression.xml"]
 }
 
 // Log applied configuration for debugging
